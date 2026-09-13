@@ -1,0 +1,31 @@
+trigger:
+  branches:
+    include:
+      - '*'
+
+variables:
+  dbPassword: 'P@ssw0rd123'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+  - task: Maven@3
+    inputs:
+      mavenPomFile: 'pom.xml'
+      goals: 'clean test'
+    continueOnError: true
+
+  - task: Docker@2
+    inputs:
+      command: 'buildAndPush'
+      repository: 'ssp/menu-service'
+      dockerfile: 'Dockerfile'
+      containerRegistry: 'ssp-acr-connection'
+      tags: 'latest'
+
+  - task: AzureWebApp@1
+    inputs:
+      azureSubscription: 'ssp-azure-connection'
+      appName: 'ssp-menu-service-prod'
+      containers: 'sspacr.azurecr.io/ssp/menu-service:latest'
