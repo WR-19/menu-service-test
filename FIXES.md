@@ -18,6 +18,12 @@ Why it matters: An unused dependency with a known critical CVE is still a risk i
 
 ## Problem 3
 
+File: infra/main.tf
+Fix: Set `https_only = true` on the Web App. Removed `admin_enabled = true` on the ACR (shared static credentials) and instead gave the Web App a system-assigned managed identity with the `AcrPull` role, so it pulls images without a password. Added a Key Vault holding the DB password as a secret, with the Web App's identity granted access to read it. Added a Log Analytics workspace and Application Insights, wired into the Web App's app settings.
+Why it matters: Plain HTTP means traffic can be read in transit. A shared ACR password never expires and works for anyone who has it; a managed identity is scoped to just that one app and can be revoked on its own. No Key Vault meant the DB password had nowhere safe to live. No App Insights/Log Analytics meant no visibility if something broke in production.
+
+## Problem 4
+
 File:
 Fix:
 Why it matters:
