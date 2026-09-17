@@ -12,6 +12,12 @@ Why it matters: Extra tools in the running container just give an attacker more 
 
 ## Problem 2
 
+File: pom.xml
+Fix: Removed the log4j-core 2.14.1 dependency - it's not used anywhere in the code (Spring Boot logs through Logback by default) and it's the Log4Shell CVE version. Also added a JaCoCo rule that fails the build if line coverage drops below 70%, wired into the `verify` phase so it runs the same way locally and in CI.
+Why it matters: An unused dependency with a known critical CVE is still a risk if anyone ever triggers it, and it was serving no purpose. The coverage gate stops the build from silently accepting untested code as it grows.
+
+## Problem 3
+
 File:
 Fix:
 Why it matters:
