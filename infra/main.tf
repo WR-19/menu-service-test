@@ -27,6 +27,7 @@ variable "app_service_plan_sku" {
   default = "B1"
 }
 
+
 variable "db_password" {
   type      = string
   sensitive = true
