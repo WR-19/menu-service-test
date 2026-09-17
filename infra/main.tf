@@ -27,6 +27,11 @@ variable "app_service_plan_sku" {
   default = "B1"
 }
 
+variable "compute_location" {
+  type    = string
+  default = "ukwest"
+}
+
 
 variable "db_password" {
   type      = string
@@ -48,7 +53,7 @@ resource "azurerm_container_registry" "acr" {
 resource "azurerm_service_plan" "plan" {
   name                = "ssp-menu-plan-${var.environment_name}"
   resource_group_name = azurerm_resource_group.menu_service.name
-  location            = azurerm_resource_group.menu_service.location
+  location            = var.compute_location
   os_type             = "Linux"
   sku_name            = var.app_service_plan_sku
 }
@@ -96,7 +101,7 @@ resource "azurerm_key_vault_secret" "db_password" {
 resource "azurerm_linux_web_app" "menu_service" {
   name                = "ssp-menu-service-${var.environment_name}"
   resource_group_name = azurerm_resource_group.menu_service.name
-  location            = azurerm_resource_group.menu_service.location
+  location            = var.compute_location
   service_plan_id     = azurerm_service_plan.plan.id
   https_only          = true
 
