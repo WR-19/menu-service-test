@@ -20,13 +20,13 @@ Why it matters: An unused dependency with a known critical CVE is still a risk i
 
 File: infra/main.tf
 Fix: Set `https_only = true` on the Web App. Removed `admin_enabled = true` on the ACR (shared static credentials) and instead gave the Web App a system-assigned managed identity with the `AcrPull` role, so it pulls images without a password. Added a Key Vault holding the DB password as a secret, with the Web App's identity granted access to read it. Added a Log Analytics workspace and Application Insights, wired into the Web App's app settings.
-Why it matters: Plain HTTP means traffic can be read in transit. A shared ACR password never expires and works for anyone who has it; a managed identity is scoped to just that one app and can be revoked on its own. No Key Vault meant the DB password had nowhere safe to live. No App Insights/Log Analytics meant no visibility if something broke in production.
+Why it matters: Plain HTTP means traffic can be read in transit. A shared ACR password never expires and works for anyone who has it; a managed identity is scoped to just that one app and can be revoked on its own. No Key Vault meant the DB password had nowhere safe to be stored. No App Insights/Log Analytics meant no visibility if something broke in production.
 
 ## Problem 4
 
 File: azure-pipelines.yml
 Fix: Trigger was any branch, now master only. Hardcoded password removed, pulled from Key Vault instead. Removed continueOnError on tests. Split into 4 stages (Build&Test, Scan, Deploy Dev, Deploy Prod) with a Trivy scan before push, build-ID tags instead of latest, manual approval + 06:00-10:00 blackout on prod, smoke test after each deploy.
-Why it matters: Same reasoning as the other bugs - broken code could ship silently, a hardcoded password is a leaked credential, latest tags make rollback guesswork. Manual approval + blackout window matter because this deploys in front of real tills during breakfast rush.
+Why it matters: Same reasoning as the other bugs - broken code could ship silently, a hardcoded password is a leaked credential, latest tags make rollback guesswork. Manual approval + blackout window matter because this deploys in front of real tills during breakfast rush (6-10am).
 
 ## Problem 5
 
