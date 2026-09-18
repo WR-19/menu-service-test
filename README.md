@@ -62,6 +62,17 @@ work you understand.
 
 
 ## My work:
+## How I used AI
+
+Used Claude Code as a pairing tool, not an autopilot - I drove all the actual changes (GitHub Desktop, Azure Portal, Azure DevOps setup) myself, and treated every fix as unverified until I'd actually run it. A few real examples from debugging along the way:
+
+- Docker image pulled fine locally but failed on the real Web App with a misleading "unauthorized" error. Pulled the actual container logs instead of trusting the first error message, found the real cause further down (built for arm64 on my Mac, Azure runs amd64), rebuilt targeting the right platform.
+- App Service Plan creation failed on a quota error. Traced it past the generic message to the specific VM family involved, confirmed via `az vm list-usage`, and found the family I'd been granted quota for wasn't the one actually being used - fixed by requesting the right one.
+- Smoke test script parsed fine by eye but threw a PowerShell error the first time it actually ran (`$attempt:` inside a string). Caught because I ran it against the real deployed app before trusting it, not because I read the code carefully enough.
+- Ran the vulnerability scan before and after the Spring Boot upgrade to get real numbers (43 to 25 vulnerabilities) instead of assuming the upgrade helped.
+
+The common thread: every fix got verified by actually running it - build, deploy, curl, test - before I moved on, rather than accepting a suggested change on faith.
+
 ## Design choices
 
 - Multi-stage Docker build, non-root user, pinned base image tags
