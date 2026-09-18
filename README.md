@@ -72,8 +72,8 @@ work you understand.
 ## What I left out, and why
 
 1. Remote Terraform state backend - state is local for this exercise, a real team setup needs an Azure Storage backend with locking so two people can't apply at once
-2. Spring Boot major version upgrade - still on 2.7.18 (EOL), upgrading to 3.x needs a javax to jakarta namespace migration, its own piece of work outside the time budget
-3. Network restrictions / WAF - the Web App is public over HTTPS, a real setup would put it behind a VNet with private endpoints and a WAF in front
+2. Network restrictions / WAF - the Web App is public over HTTPS, a real setup would put it behind a VNet with private endpoints and a WAF in front
+3. Live Azure DevOps pipeline run left permanently green - the Trivy scan still correctly blocks the pipeline (25 vulnerabilities, 6 CRITICAL, mostly in the bundled Tomcat/Jackson versions), even after upgrading off EOL Spring Boot. That's the scan doing its job, not a bug - a scanner that always passes isn't actually checking anything
 
 ## What I'd change to run this across 38 countries
 
