@@ -1,31 +1,162 @@
 trigger:
   branches:
     include:
-      - '*'
+      - master
 
 variables:
-  dbPassword: 'P@ssw0rd123'
+  imageRepository: 'ssp/menu-service'
+  devAcr: 'sspacrdev'
+  prodAcr: 'sspacrprod'
+  vmImageName: 'ubuntu-latest'
+  azureSubscription: 'ssp-azure-connection'
 
-pool:
-  vmImage: 'ubuntu-latest'
+stages:
+  - stage: BuildAndTest
+    displayName: 'Build & Test'
+    jobs:
+      - job: Build
+        pool:
+          vmImage: $(vmImageName)
+        steps:
+          - task: Maven@3
+            displayName: 'mvn clean verify'
+            inputs:
+              mavenPomFile: 'pom.xml'
+              goals: 'clean verify'
+              publishJUnitResults: true
+              testResultsFiles: '**/surefire-reports/TEST-*.xml'
+              codeCoverageToolOption: 'JaCoCo'
+              codeCoverageClassFilter: '+:com.ssp.menuservice.*'
 
-steps:
-  - task: Maven@3
-    inputs:
-      mavenPomFile: 'pom.xml'
-      goals: 'clean test'
-    continueOnError: true
+          - task: PublishCodeCoverageResults@2
+            displayName: 'Publish coverage report'
+            inputs:
+              summaryFileLocation: '$(System.DefaultWorkingDirectory)/target/site/jacoco/jacoco.xml'
 
-  - task: Docker@2
-    inputs:
-      command: 'buildAndPush'
-      repository: 'ssp/menu-service'
-      dockerfile: 'Dockerfile'
-      containerRegistry: 'ssp-acr-connection'
-      tags: 'latest'
+  - stage: Scan
+    displayName: 'Build image & scan'
+    dependsOn: BuildAndTest
+    condition: succeeded()
+    jobs:
+      - job: BuildScanPush
+        pool:
+          vmImage: $(vmImageName)
+        steps:
+          - task: AzureCLI@2
+            displayName: 'ACR login'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: az acr login --name $(devAcr)
 
-  - task: AzureWebApp@1
-    inputs:
-      azureSubscription: 'ssp-azure-connection'
-      appName: 'ssp-menu-service-prod'
-      containers: 'sspacr.azurecr.io/ssp/menu-service:latest'
+          - script: docker build -t $(devAcr).azurecr.io/$(imageRepository):$(Build.BuildId) .
+            displayName: 'Build image'
+
+          - script: |
+              curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+              trivy image --severity CRITICAL,HIGH --exit-code 1 $(devAcr).azurecr.io/$(imageRepository):$(Build.BuildId)
+            displayName: 'Trivy vulnerability scan (fails on critical/high)'
+
+          - script: docker push $(devAcr).azurecr.io/$(imageRepository):$(Build.BuildId)
+            displayName: 'Push image to dev ACR, tagged with build ID'
+
+  - stage: DeployDev
+    displayName: 'Deploy to Dev'
+    dependsOn: Scan
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+    jobs:
+      - deployment: DeployDev
+        displayName: 'Deploy to Dev Web App'
+        environment: 'dev'
+        pool:
+          vmImage: $(vmImageName)
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureKeyVault@2
+                  displayName: 'Fetch DB password from dev Key Vault'
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    KeyVaultName: 'ssp-menu-kv-dev'
+                    SecretsFilter: 'db-password'
+
+                - task: AzureWebApp@1
+                  displayName: 'Deploy to dev Web App'
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appName: 'ssp-menu-service-dev'
+                    containers: '$(devAcr).azurecr.io/$(imageRepository):$(Build.BuildId)'
+                    appSettings: '-DB_PASSWORD $(db-password)'
+
+                - task: AzureCLI@2
+                  displayName: 'Smoke test dev'
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    scriptType: pscore
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      ./smoke-test.ps1 -BaseUrl "https://ssp-menu-service-dev.azurewebsites.net"
+
+  # Prod requires manual approval - configured on the 'prod' Environment in
+  # Azure DevOps (Pipelines > Environments > prod > Approvals and checks),
+  # not expressible in this YAML file itself.
+  - stage: DeployProd
+    displayName: 'Deploy to Prod'
+    dependsOn: DeployDev
+    condition: succeeded()
+    jobs:
+      - deployment: DeployProd
+        displayName: 'Deploy to Prod Web App'
+        environment: 'prod'
+        pool:
+          vmImage: $(vmImageName)
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: |
+                    hour=$(TZ="Europe/London" date +%H)
+                    if [ "$hour" -ge 6 ] && [ "$hour" -lt 10 ]; then
+                      echo "##vso[task.logissue type=error]Prod deploys are blocked 06:00-10:00 UK time (breakfast rush). Current UK hour: $hour"
+                      exit 1
+                    fi
+                    echo "Outside blackout window (UK hour: $hour), proceeding with deploy."
+                  displayName: 'Enforce prod deploy blackout window'
+
+                - task: AzureCLI@2
+                  displayName: 'Promote tested image from dev ACR to prod ACR'
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az acr import \
+                        --name $(prodAcr) \
+                        --source $(devAcr).azurecr.io/$(imageRepository):$(Build.BuildId) \
+                        --image $(imageRepository):$(Build.BuildId)
+
+                - task: AzureKeyVault@2
+                  displayName: 'Fetch DB password from prod Key Vault'
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    KeyVaultName: 'ssp-menu-kv-prod'
+                    SecretsFilter: 'db-password'
+
+                - task: AzureWebApp@1
+                  displayName: 'Deploy to prod Web App'
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appName: 'ssp-menu-service-prod'
+                    containers: '$(prodAcr).azurecr.io/$(imageRepository):$(Build.BuildId)'
+                    appSettings: '-DB_PASSWORD $(db-password)'
+
+                - task: AzureCLI@2
+                  displayName: 'Smoke test prod'
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    scriptType: pscore
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      ./smoke-test.ps1 -BaseUrl "https://ssp-menu-service-prod.azurewebsites.net"
