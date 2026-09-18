@@ -71,7 +71,7 @@ Used Claude Code as a pairing tool, not an autopilot - I drove all the actual ch
 - Smoke test script parsed fine by eye but threw a PowerShell error the first time it actually ran (`$attempt:` inside a string). Caught because I ran it against the real deployed app before trusting it, not because I read the code carefully enough.
 - Ran the vulnerability scan before and after the Spring Boot upgrade to get real numbers (43 to 25 vulnerabilities) instead of assuming the upgrade helped.
 
-The common thread: every fix got verified by actually running it - build, deploy, curl, test - before I moved on, rather than accepting a suggested change on faith.
+The common thread: every fix got verified by actually running it - build, deploy, curl, test - before I moved on, rather than accepting a suggested change without monitoring and checking it myself.
 
 ## Design choices
 
