@@ -38,6 +38,10 @@ variable "db_password" {
   sensitive = true
 }
 
+variable "alert_email" {
+  type = string
+}
+
 resource "azurerm_resource_group" "menu_service" {
   name     = "ssp-menu-service-${var.environment_name}"
   location = var.location
@@ -136,6 +140,39 @@ resource "azurerm_key_vault_access_policy" "web_app" {
   object_id    = azurerm_linux_web_app.menu_service.identity[0].principal_id
 
   secret_permissions = ["Get", "List"]
+}
+
+resource "azurerm_monitor_action_group" "alerts" {
+  name                = "ssp-menu-alerts-${var.environment_name}"
+  resource_group_name = azurerm_resource_group.menu_service.name
+  short_name          = "spmenu${var.environment_name}"
+
+  email_receiver {
+    name          = "primary"
+    email_address = var.alert_email
+  }
+}
+
+resource "azurerm_monitor_metric_alert" "high_5xx" {
+  name                = "ssp-menu-high-5xx-${var.environment_name}"
+  resource_group_name = azurerm_resource_group.menu_service.name
+  scopes              = [azurerm_linux_web_app.menu_service.id]
+  description         = "Fires when the app returns more than 10 HTTP 5xx responses in 5 minutes"
+  severity            = 1
+  frequency           = "PT1M"
+  window_size         = "PT5M"
+
+  criteria {
+    metric_namespace = "Microsoft.Web/sites"
+    metric_name      = "Http5xx"
+    aggregation      = "Count"
+    operator         = "GreaterThan"
+    threshold        = 10
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.alerts.id
+  }
 }
 
 output "app_service_host_name" {

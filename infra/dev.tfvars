@@ -1,2 +1,2 @@
-environment_name      = "dev"
-app_service_plan_sku  = "B1"
+environment_name     = "dev"
+app_service_plan_sku = "B1"
