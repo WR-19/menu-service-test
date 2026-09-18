@@ -60,6 +60,8 @@ walk through every file and answer questions without AI help, and make
 live changes to your solution while sharing your screen. Submit only
 work you understand.
 
+
+## My work:
 ## Design choices
 
 - Multi-stage Docker build, non-root user, pinned base image tags
@@ -74,7 +76,10 @@ work you understand.
 
 1. Remote Terraform state backend - state is local for this exercise, a real team setup needs an Azure Storage backend with locking so two people can't apply at once
 2. Network restrictions / WAF - the Web App is public over HTTPS, a real setup would put it behind a VNet with private endpoints and a WAF in front
-3. Live Azure DevOps pipeline run left permanently green - the Trivy scan still correctly blocks the pipeline (25 vulnerabilities, 6 CRITICAL, mostly in the bundled Tomcat/Jackson versions), even after upgrading off EOL Spring Boot. That's the scan doing its job, not a bug - a scanner that always passes isn't actually checking anything
+3. Live Azure DevOps pipeline run - the Trivy scan still correctly blocks the pipeline (25 vulnerabilities, 6 CRITICAL, mostly in the bundled Tomcat/Jackson versions), even after upgrading off EOL Spring Boot. That's the scan doing its job, not a bug - a scanner that always passes isn't actually checking anything
+<img width="1085" height="276" alt="Screenshot 2026-09-18 at 14 16 45" src="https://github.com/user-attachments/assets/52eac568-e2f0-458b-909a-a808b705928d" />
+
+
 
 ## What I'd change to run this across 38 countries
 
