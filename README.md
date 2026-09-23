@@ -68,6 +68,7 @@ work you understand.
 - DB password in Key Vault, not in the pipeline YAML
 - App Insights + Log Analytics wired in from the start
 - Hit a real quota limit deploying dev - the trial subscription had 0 quota for the VM family App Service Plans use, and UK South had no spare capacity even after upgrading to Pay-As-You-Go, so I requested quota in UK West instead. Not a code bug, just what happens when you actually deploy something instead of only writing the Terraform
+- Alert rule (>10 HTTP 5xx in 5 minutes) with an action group email notification, applied for real against dev
 
 ## What I left out, and why
 
