@@ -24,6 +24,12 @@ Why it matters: Plain HTTP means traffic can be read in transit. A shared ACR pa
 
 ## Problem 4
 
-File:
-Fix:
-Why it matters:
+File: azure-pipelines.yml
+Fix: Trigger was any branch, now master only. Hardcoded password removed, pulled from Key Vault instead. Removed continueOnError on tests. Split into 4 stages (Build&Test, Scan, Deploy Dev, Deploy Prod) with a Trivy scan before push, build-ID tags instead of latest, manual approval + 06:00-10:00 blackout on prod, smoke test after each deploy.
+Why it matters: Same reasoning as the other bugs - broken code could ship silently, a hardcoded password is a leaked credential, latest tags make rollback guesswork. Manual approval + blackout window matter because this deploys in front of real tills during breakfast rush.
+
+## Problem 5
+
+File: pom.xml
+Fix: Upgraded Spring Boot 2.7.18 (EOL) to 3.5.3, no code changes needed. Trivy scan before/after: 43 vulnerabilities (8 CRITICAL) down to 25 (6 CRITICAL).
+Why it matters: An EOL version never gets patched again - every CVE against it is permanent. What's left is new CVEs against a version that's still actively maintained, so those will actually get fixed.
