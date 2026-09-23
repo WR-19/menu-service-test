@@ -60,6 +60,19 @@ walk through every file and answer questions without AI help, and make
 live changes to your solution while sharing your screen. Submit only
 work you understand.
 
+
+## My work:
+## How I used AI
+
+Used Claude Code as a pairing tool, not an autopilot - I drove all the actual changes (GitHub Desktop, Azure Portal, Azure DevOps setup) myself, and treated every fix as unverified until I'd actually run it. A few real examples from debugging along the way:
+
+- Docker image pulled fine locally but failed on the real Web App with a misleading "unauthorized" error. Pulled the actual container logs instead of trusting the first error message, found the real cause further down (built for arm64 on my Mac, Azure runs amd64), rebuilt targeting the right platform.
+- App Service Plan creation failed on a quota error. Traced it past the generic message to the specific VM family involved, confirmed via `az vm list-usage`, and found the family I'd been granted quota for wasn't the one actually being used - fixed by requesting the right one.
+- Smoke test script parsed fine by eye but threw a PowerShell error the first time it actually ran (`$attempt:` inside a string). Caught because I ran it against the real deployed app before trusting it, not because I read the code carefully enough.
+- Ran the vulnerability scan before and after the Spring Boot upgrade to get real numbers (43 to 25 vulnerabilities) instead of assuming the upgrade helped.
+
+The common thread: every fix got verified by actually running it - build, deploy, curl, test - before I moved on, rather than accepting a suggested change on faith.
+
 ## Design choices
 
 - Multi-stage Docker build, non-root user, pinned base image tags
@@ -74,7 +87,10 @@ work you understand.
 
 1. Remote Terraform state backend - state is local for this exercise, a real team setup needs an Azure Storage backend with locking so two people can't apply at once
 2. Network restrictions / WAF - the Web App is public over HTTPS, a real setup would put it behind a VNet with private endpoints and a WAF in front
-3. Live Azure DevOps pipeline run left permanently green - the Trivy scan still correctly blocks the pipeline (25 vulnerabilities, 6 CRITICAL, mostly in the bundled Tomcat/Jackson versions), even after upgrading off EOL Spring Boot. That's the scan doing its job, not a bug - a scanner that always passes isn't actually checking anything
+3. Live Azure DevOps pipeline run - the Trivy scan still correctly blocks the pipeline (25 vulnerabilities, 6 CRITICAL, mostly in the bundled Tomcat/Jackson versions), even after upgrading off EOL Spring Boot. That's the scan doing its job, not a bug - a scanner that always passes isn't actually checking anything
+<img width="1085" height="276" alt="Screenshot 2026-09-18 at 14 16 45" src="https://github.com/user-attachments/assets/52eac568-e2f0-458b-909a-a808b705928d" />
+
+
 
 ## What I'd change to run this across 38 countries
 
